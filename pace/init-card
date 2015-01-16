@@ -1,0 +1,8 @@
+#! /bin/sh
+
+PATH=$HOME/OpenSC/src/tools:$PATH
+
+echo "create-pkcs15..."
+#pkcs15-init --create-pkcs15 --no-so-pin $*
+pkcs15-init --create-pkcs15 --so-pin 333333 --so-puk 444444 $*
+

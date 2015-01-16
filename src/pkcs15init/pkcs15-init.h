@@ -83,8 +83,8 @@ struct sc_pkcs15init_operations {
 	 * Create an empty key object.
 	 * @index is the number key objects already on the card.
 	 * @pin_info contains information on the PIN protecting
-	 *		the key. NULL if the key should be
-	 *		unprotected.
+	 * 		the key. NULL if the key should be
+	 * 		unprotected.
 	 * @key_info should be filled in by the function
 	 */
 	int	(*create_key)(struct sc_profile *, struct sc_pkcs15_card *,
@@ -118,10 +118,9 @@ struct sc_pkcs15init_operations {
 	/*
 	 * Finalize card
 	 * Ends the initialization phase of the smart card/token
-	 * (actually this command is currently only for starcos spk 2.3
-	 * cards).
+	 * (only used for some cards)
 	 */
-	int	(*finalize_card)(struct sc_card *);
+	int	(*finalize_card)(struct sc_profile *, struct sc_card *);
 
 	/*
 	 * Delete object
@@ -147,9 +146,9 @@ struct sc_pkcs15init_operations {
 };
 
 /* Do not change these or reorder these */
-#define SC_PKCS15INIT_ID_STYLE_NATIVE		0
-#define SC_PKCS15INIT_ID_STYLE_MOZILLA		1
-#define SC_PKCS15INIT_ID_STYLE_RFC2459		2
+#define SC_PKCS15INIT_ID_STYLE_NATIVE 	0
+#define SC_PKCS15INIT_ID_STYLE_MOZILLA	1
+#define SC_PKCS15INIT_ID_STYLE_RFC2459	2
 
 #define SC_PKCS15INIT_SO_PIN		0
 #define SC_PKCS15INIT_SO_PUK		1
@@ -356,9 +355,9 @@ extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *);
 extern int	sc_pkcs15init_update_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *, void *, unsigned int);
-extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *,
+extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *, 
 				struct sc_file *, int);
-extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *,
+extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
 				struct sc_file *);
 extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_auth_info *);
 extern int	sc_profile_get_pin_retries(struct sc_profile *, int);
@@ -371,7 +370,7 @@ extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_car
 				sc_file_t *,  unsigned int, int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
 				struct sc_pkcs15_card *, const struct sc_path *);
-extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *,
+extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *, 
 			struct sc_pkcs15_df *, int);
 extern int	sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
 			int, struct sc_pkcs15_id *, void *);
@@ -391,10 +390,10 @@ extern int	sc_pkcs15init_requires_restrictive_usage(
 extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_card *,
 				const struct sc_pkcs15_id *, struct sc_file **);
 
-extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *,
+extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
 				struct sc_profile *, unsigned, int);
 
-extern int	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
+extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
 
 extern int	sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 		                struct sc_aid *aid);
@@ -422,6 +421,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_iasecc_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_piv_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_openpgp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_sc_hsm_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_acos5_ops(void);
 
 #ifdef __cplusplus
 }

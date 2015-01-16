@@ -120,11 +120,11 @@ static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 static int	sc_pkcs15init_get_pin_path(struct sc_pkcs15_card *,
 			struct sc_pkcs15_id *, struct sc_path *);
 static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
-			unsigned int, struct sc_pkcs15_auth_info *);
-static struct	sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
+	       		unsigned int, struct sc_pkcs15_auth_info *);
+static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
-static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t,
+static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t, 
 			struct sc_profile *);
 static int	sc_pkcs15init_write_info(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *);
@@ -154,6 +154,7 @@ static struct profile_operations {
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
 	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
+	{ "acos5", (void *) sc_pkcs15init_get_acos5_ops },
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
@@ -346,7 +347,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 		LOG_TEST_RET(ctx, r, "Read info error");
 	}
 
-	/* Check the config file for a profile name.
+	/* Check the config file for a profile name. 
 	 * If none is defined, use the default profile name.
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
@@ -432,7 +433,7 @@ sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *p15objects[10];
 	int i, r, nn_objs;
-
+               
 	LOG_FUNC_CALLED(ctx);
 
 	/* Prepare pin-domain instantiation:
@@ -499,7 +500,7 @@ sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	/* Needs the 'SOPIN' AUTH pkcs15 object.
 	 * So that, SOPIN can be found by it's reference. */
 	if (sc_pkcs15_bind(p15card->card, aid, &p15card) >= 0)
-		profile->p15_data = p15card;
+		profile->p15_data = p15card;						        
 
 	if (profile->ops->erase_card == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -511,7 +512,7 @@ sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 
 int
-sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card,
+sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card, 
 		struct sc_profile *profile)
 {
 	struct sc_file	*df = profile->df_info->file, *dir;
@@ -546,7 +547,7 @@ sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card,
 }
 
 
-int
+int 
 sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		const struct sc_path *file_path)
 {
@@ -578,8 +579,8 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	}
 	else if (sc_file_get_acl_entry(file, SC_AC_OP_DELETE))   {
 		sc_log(ctx, "Found 'DELETE' acl");
-	        rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE);
-		sc_file_free(file);
+        rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE);
+        sc_file_free(file);
 	}
 	else    {
 		sc_log(ctx, "Try to get the parent's 'DELETE' access");
@@ -707,12 +708,12 @@ sc_pkcs15init_finalize_card(struct sc_card *card, struct sc_profile *profile)
 {
 	if (profile->ops->finalize_card == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
-	return profile->ops->finalize_card(card);
+	return profile->ops->finalize_card(profile, card);
 }
 
 
 int
-sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
+sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile, 
 		struct sc_aid *aid)
 {
 	struct sc_context *ctx = card->ctx;
@@ -724,12 +725,12 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 		sc_enum_apps(card);
 
 	if (aid)   {
-		sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
-		app = sc_find_app(card, aid);
-		if (!app)   {
-			sc_log(ctx, "Cannot find oncard application");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
+	sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
+	app = sc_find_app(card, aid);
+	if (!app)   {
+		sc_log(ctx, "Cannot find oncard application");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	}
 	else if (card->app_count == 1) {
 		app = card->app[0];
@@ -737,7 +738,7 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 	else if (card->app_count > 1) {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Need AID defined in this context");
 	}
-
+	
 	sc_log(ctx, "Finalize profile with application '%s'", app ? app->label : "default");
 	rv = sc_profile_finish(profile, app);
 
@@ -807,12 +808,12 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, pin_label, NULL, &pin_ainfo);
 		if (pin_obj)   {
-			/* When composing ACLs to create 'DIR' DF,
-			 *	the references of the not-yet-existing PINs can be requested.
+			/* When composing ACLs to create 'DIR' DF, 
+			 * 	the references of the not-yet-existing PINs can be requested.
 			 * For this, create a 'virtual' AUTH object 'SO PIN', accessible by the card specific part,
 			 * but not yet written into the on-card PKCS#15.
 			 */
-			sc_log(ctx, "Add virtual SO_PIN('%s',flags:%X,reference:%i,path:'%s')", pin_obj->label,
+			sc_log(ctx, "Add virtual SO_PIN('%s',flags:%X,reference:%i,path:'%s')", pin_obj->label, 
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
 			r = sc_pkcs15_add_object(p15card, pin_obj);
 			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
@@ -840,7 +841,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 				args->so_puk, args->so_puk_len);
 
 	if (pin_obj)
-		/* Remove 'virtual' AUTH object . */
+		/* Remove 'virtual' AUTH object . */ 
 		sc_pkcs15_remove_object(p15card, pin_obj);
 
 	if (r < 0)
@@ -920,7 +921,7 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 	if (!args->puk_id.len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PUK auth ID not supplied");
-
+		
 	/* Make sure we don't get duplicate PIN IDs */
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->puk_id, NULL);
 	if (r != SC_ERROR_OBJECT_NOT_FOUND)
@@ -1029,7 +1030,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 
 static int
-sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
+sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card, 
 		struct sc_profile *profile,
 		struct sc_pkcs15_object *pin_obj,
 		struct sc_pkcs15init_pinargs *args)
@@ -1082,7 +1083,7 @@ sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
 	if (args->puk_len == 0)
 		pin_attrs->flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
 
-	sc_log(ctx, "create PIN with reference:%X, flags:%X, path:%s",
+	sc_log(ctx, "create PIN with reference:%X, flags:%X, path:%s", 
 			pin_attrs->reference, pin_attrs->flags, sc_print_path(&auth_info->path));
 	r = profile->ops->create_pin(profile, p15card,
 			df, pin_obj,
@@ -1100,8 +1101,8 @@ sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
  * Default function for creating a pin subdirectory
  */
 int
-sc_pkcs15_create_pin_domain(struct sc_profile *profile,
-		struct sc_pkcs15_card *p15card, const struct sc_pkcs15_id *id,
+sc_pkcs15_create_pin_domain(struct sc_profile *profile, 
+		struct sc_pkcs15_card *p15card, const struct sc_pkcs15_id *id, 
 		struct sc_file **ret)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1236,7 +1237,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 				break;
 			}
 
-			if (r != 0)
+			if (r != 0) 
 				/* Other error trying to retrieve pin obj */
 				LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Failed to select key reference");
 
@@ -1315,7 +1316,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 
 	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)
-		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
+	pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)
 		pubkey_args.params.ec = keygen_args->prkey_args.params.ec;
 
@@ -1369,7 +1370,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (res_obj)
 		*res_obj = object;
-
+		
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
 	profile->dirty = 1;
@@ -1404,7 +1405,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	if (check_key_compatibility(p15card, &key, keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
-		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
+		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
 			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
 	}
 
@@ -1431,11 +1432,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	/*idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);*/
 
 	if (profile->ops->create_key)
-		r = profile->ops->create_key(profile, p15card, object);
+	r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
 	if (profile->ops->store_key)
-		r = profile->ops->store_key(profile, p15card, object, &key);
+	r = profile->ops->store_key(profile, p15card, object, &key);
 	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 
 	sc_pkcs15_free_object_content(object);
@@ -1474,7 +1475,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	struct sc_pkcs15_pubkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_pubkey key;
-	struct sc_path	*path;
+	struct sc_path 	*path;
 	const char	*label;
 	unsigned int	keybits, type = 0, usage;
 	int		r;
@@ -1489,17 +1490,17 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
 		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
-		type = SC_PKCS15_TYPE_PUBKEY_RSA;
+		type = SC_PKCS15_TYPE_PUBKEY_RSA; 
 		break;
 #ifdef SC_PKCS15_TYPE_PUBKEY_DSA
 	case SC_ALGORITHM_DSA:
 		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
-		type = SC_PKCS15_TYPE_PUBKEY_DSA;
+		type = SC_PKCS15_TYPE_PUBKEY_DSA; 
 		break;
 #endif
 	case SC_ALGORITHM_GOSTR3410:
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
-		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
+		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410; 
 		break;
 	case SC_ALGORITHM_EC:
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
@@ -1590,7 +1591,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (type == SC_PKCS15_TYPE_PUBKEY_EC)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &key_info->direct.spki, &key_info->path);
 	else
-		r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
+	r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
 
 	path = &key_info->path;
 	if (path->count == 0) {
@@ -1651,7 +1652,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	sc_der_copy(&object->content, &args->der_encoded);
 	sc_der_copy(&cert_info->value, &args->der_encoded);
 
-	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label,
+	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label, 
 			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
 	if (!profile->pkcs15.direct_certificates)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &cert_info->path);
@@ -1661,7 +1662,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_CDF, object);
 		/* TODO: update private key PKCS#15 object with the certificate's attributes */
 	}
-
+	
 	if (r >= 0)   {
 		r = sc_pkcs15_prkey_attrs_from_cert(p15card, object, &key_object);
 		if (r)   {
@@ -1717,7 +1718,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	if (!args->id.len) {
 		/* Select an ID if the user didn't specify one, otherwise
 		 * make sure it's unique (even though data objects doesn't
-		 * have a pkcs15 id we need one here to create a unique
+		 * have a pkcs15 id we need one here to create a unique 
 		 * file id from the data file template */
 		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
 		LOG_TEST_RET(ctx, r, "Get 'DATA' objects error");
@@ -1773,8 +1774,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 }
 
 
-int
-sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
+int 
+sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,	
 		struct sc_profile *profile, unsigned auth_method, int reference)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1791,14 +1792,14 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Get PKCS#15 AUTH objects error");
 	nn_objs = r;
 
-	sc_log(ctx, "found %i auth objects; looking for AUTH object(auth_method:%i,reference:%i)",
+	sc_log(ctx, "found %i auth objects; looking for AUTH object(auth_method:%i,reference:%i)", 
 			nn_objs, auth_method, reference);
 	for (ii=0; ii<nn_objs; ii++)   {
 		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)auth_objs[ii]->data;
 		struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 
-		sc_log(ctx, "check PIN(%s,auth_method:%i,type:%i,reference:%i,flags:%X)",
-				auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type,
+		sc_log(ctx, "check PIN(%s,auth_method:%i,type:%i,reference:%i,flags:%X)", 
+				auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type, 
 				pin_attrs->reference, pin_attrs->flags);
 		/* Find out if there is AUTH pkcs15 object with given 'type' and 'reference' */
 		if (auth_info->auth_method == auth_method && pin_attrs->reference == reference)
@@ -1807,7 +1808,7 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 		if (auth_method != SC_AC_SYMBOLIC)
 			continue;
 
-		/* Translate 'SYMBOLIC' PIN reference into the pkcs#15 pinAttributes.flags
+		/* Translate 'SYMBOLIC' PIN reference into the pkcs#15 pinAttributes.flags 
 		 * 	and check for the existing pkcs15 PIN object with these flags. */
 		switch (reference)   {
 		case SC_PKCS15INIT_USER_PIN:
@@ -1842,8 +1843,8 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 
 	}
 
-	/* 2. No existing pkcs15 PIN object
-	 *	-- check if profile defines some PIN with 'reference' as PIN reference. */
+	/* 2. No existing pkcs15 PIN object 
+	 * 	-- check if profile defines some PIN with 'reference' as PIN reference. */
 	r = sc_profile_get_pin_id_by_reference(profile, auth_method, reference, &auth_info);
 	if (r < 0)
 		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "PIN template not found");
@@ -1885,7 +1886,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		LOG_TEST_RET(ctx, r, "Cannot delete file");
 
 	r = sc_pkcs15init_update_file(profile, p15card, file, data->value, data->len);
-
+	
 	*path = file->path;
 
 	if (file)
@@ -1947,7 +1948,7 @@ sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 /*
  * Compute modulus length
  */
-static size_t
+static size_t 
 sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
 {
 	unsigned int	mask, bits;
@@ -1964,20 +1965,20 @@ sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
 /*
  * Check consistency of the key parameters.
  */
-static int
-check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *params,
+static int 
+check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *params, 
 		unsigned int keybits, unsigned int *out_keybits)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned int alg = params->prkey_args.key.algorithm;
+	unsigned int alg = params->prkey_args.key.algorithm; 
 	int i, rv;
 
 	if (alg == SC_ALGORITHM_EC)   {
 		struct sc_pkcs15_ec_parameters *ecparams = &params->prkey_args.params.ec;
-
+	 
 		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
 		LOG_TEST_RET(ctx, rv, "Cannot fix EC parameters");
-
+		
 		sc_log(ctx, "EC parameters: %s", sc_dump_hex(ecparams->der.value, ecparams->der.len));
 		if (!keybits)
 			keybits = ecparams->field_length;
@@ -2184,7 +2185,7 @@ static struct sc_pkcs15_df *
 find_df_by_type(struct sc_pkcs15_card *p15card, unsigned int type)
 {
 	struct sc_pkcs15_df *df = p15card->df_list;
-
+	
 	while (df != NULL && df->type != type)
 		df = df->next;
 	return df;
@@ -2251,7 +2252,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	else if (pubkey->algorithm == SC_ALGORITHM_EC && !pubkey->u.ec.ecpointQ.value)
 		goto done;
 
-	/* In Mozilla 'GOST R 34.10' is not yet supported.
+	/* In Mozilla 'GOST R 34.10' is not yet supported. 
 	 * So, switch to the ID recommended by RFC2459 */
 	if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 && id_style == SC_PKCS15INIT_ID_STYLE_MOZILLA)
 		id_style = SC_PKCS15INIT_ID_STYLE_RFC2459;
@@ -2299,7 +2300,7 @@ done:
 }
 
 
-static int
+static int 
 select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -2351,7 +2352,7 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 		*id = unused_id;
 		LOG_FUNC_RETURN(ctx, 0);
 	}
-
+	
 	LOG_FUNC_RETURN(ctx, SC_ERROR_TOO_MANY_OBJECTS);
 }
 
@@ -2359,14 +2360,14 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 /*
  * Select a path for a new object
  *  1.	If the object is to be protected by a PIN, use the path
- *	given in the PIN auth object
+ *  	given in the PIN auth object
  *  2.	Otherwise, use the path of the application DF
  *  3.	If the profile defines a key-dir template, the new object
- *	should go into a subdirectory of the selected DF:
- *	Instantiate the template, using the ID of the new object
- *	to uniquify the path. Inside the instantiated template,
- *	look for a file corresponding to the type of object we
- *	wish to create ("private-key", "public-key" etc).
+ *  	should go into a subdirectory of the selected DF:
+ *  	Instantiate the template, using the ID of the new object
+ *  	to uniquify the path. Inside the instantiated template,
+ *  	look for a file corresponding to the type of object we
+ *  	wish to create ("private-key", "public-key" etc).
  */
 static const char *
 get_template_name_from_object (struct sc_pkcs15_object *obj)
@@ -2379,7 +2380,7 @@ get_template_name_from_object (struct sc_pkcs15_object *obj)
 	case SC_PKCS15_TYPE_CERT:
 		return "certificate";
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		if (obj->flags & SC_PKCS15_CO_FLAG_PRIVATE)
+		if (obj->flags & SC_PKCS15_CO_FLAG_PRIVATE) 
 			return "privdata";
 		else
 			return "data";
@@ -2389,8 +2390,8 @@ get_template_name_from_object (struct sc_pkcs15_object *obj)
 }
 
 
-static int
-get_object_path_from_object (struct sc_pkcs15_object *obj,
+static int 
+get_object_path_from_object (struct sc_pkcs15_object *obj, 
 		struct sc_path *ret_path)
 {
 	if (!ret_path)
@@ -2399,13 +2400,13 @@ get_object_path_from_object (struct sc_pkcs15_object *obj,
 	memset(ret_path, 0, sizeof(struct sc_path));
 
 	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)   {
-	case SC_PKCS15_TYPE_PRKEY:
+	case SC_PKCS15_TYPE_PRKEY: 
 		*ret_path = ((struct sc_pkcs15_prkey_info *)obj->data)->path;
 		return SC_SUCCESS;
-	case SC_PKCS15_TYPE_PUBKEY:
+	case SC_PKCS15_TYPE_PUBKEY: 
 		*ret_path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
 		return SC_SUCCESS;
-	case SC_PKCS15_TYPE_CERT:
+	case SC_PKCS15_TYPE_CERT: 
 		*ret_path = ((struct sc_pkcs15_cert_info *)obj->data)->path;
 		return SC_SUCCESS;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
@@ -2419,17 +2420,17 @@ get_object_path_from_object (struct sc_pkcs15_object *obj,
 }
 
 
-static int
+static int 
 select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_pkcs15_object *obj, struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*file;
 	struct sc_pkcs15_object	*objs[32];
-	struct sc_pkcs15_id indx_id;
-	struct sc_path obj_path;
-	int ii, r, nn_objs, indx;
-	const char *name;
+	struct sc_pkcs15_id	indx_id;
+	struct sc_path 	obj_path;
+	int		ii, r, nn_objs, indx;
+	const char	*name;
 
 	LOG_FUNC_CALLED(ctx);
 	r = sc_pkcs15_get_objects(p15card, obj->type & SC_PKCS15_TYPE_CLASS_MASK, objs, sizeof(objs)/sizeof(objs[0]));
@@ -2437,13 +2438,13 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	nn_objs = r;
 
 	/* For cards with a pin-domain profile, we need
-	 * to put the key below the DF of the specified PIN
+	 * to put the key below the DF of the specified PIN 
 	 */
 	memset(path, 0, sizeof(*path));
 	if (obj->auth_id.len && profile->pin_domains != 0) {
 		r = sc_pkcs15init_get_pin_path(p15card, &obj->auth_id, path);
 		LOG_TEST_RET(ctx, r, "Cannot get PIN path");
-	}
+	} 
 	else {
 		*path = profile->df_info->file->path;
 	}
@@ -2459,13 +2460,13 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	indx_id.len = 1;
 	for (indx = TEMPLATE_INSTANTIATE_MIN_INDEX; indx <= TEMPLATE_INSTANTIATE_MAX_INDEX; indx++)   {
-		indx_id.value[0] = indx;
+		indx_id.value[0] = indx; 
 		r = sc_profile_instantiate_template(profile, "key-domain", path, name, &indx_id, &file);
 		if (r == SC_ERROR_TEMPLATE_NOT_FOUND)   {
 			/* No template in 'key-domain' -- try to instantiate the template-'object name'
 			 * outside of the 'key-domain' scope. */
 			char t_name[0x40];
-
+			
 			snprintf(t_name, sizeof(t_name), "template-%s", name);
 			sc_log(ctx, "get instance %i of '%s'", indx, t_name);
 			r = sc_profile_get_file_instance(profile, t_name, indx, &file);
@@ -2505,7 +2506,7 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	*path = file->path;
 	sc_file_free(file);
-
+	
 	sc_log(ctx, "returns object path '%s'", sc_print_path(path));
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -2627,11 +2628,11 @@ sc_pkcs15init_update_lastupdate(struct sc_pkcs15_card *p15card, struct sc_profil
 
 		r = sc_pkcs15init_update_file(profile, p15card, file, buf, buflen);
 		sc_file_free(file);
-		if (buf)
-			free(buf);
+	if (buf)
+		free(buf);
 		LOG_TEST_RET(ctx, r, "Cannot update 'LastUpdate' file");
 		LOG_FUNC_RETURN(ctx, r);
-	}
+}
 
 	r = sc_pkcs15init_update_tokeninfo(p15card, profile);
 	LOG_FUNC_RETURN(ctx, r);
@@ -2659,7 +2660,7 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
  * Update any PKCS15 DF file (except ODF and DIR)
  */
 int
-sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
+sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card, 
 		struct sc_profile *profile,
 		struct sc_pkcs15_df *df,
 		int is_new)
@@ -2768,7 +2769,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 }
 
 
-struct sc_pkcs15_object *
+struct sc_pkcs15_object * 
 sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_id, void *data)
 {
 	struct sc_pkcs15_object	*object;
@@ -2894,8 +2895,8 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 }
 
 
-int
-sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+int 
+sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 		struct sc_pkcs15_object *obj)
 {
 	struct sc_context	*ctx = p15card->card->ctx;
@@ -2932,22 +2933,22 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	}
 
 	if (profile->ops->delete_object == NULL || r == SC_ERROR_NOT_SUPPORTED)  {
-		if (path.len || path.aid.len)   {
-			r = sc_select_file(p15card->card, &path, &file);
-			if (r != SC_ERROR_FILE_NOT_FOUND)
-				LOG_TEST_RET(ctx, r, "select object path failed");
+	if (path.len || path.aid.len)   {
+		r = sc_select_file(p15card->card, &path, &file);
+		if (r != SC_ERROR_FILE_NOT_FOUND)
+			LOG_TEST_RET(ctx, r, "select object path failed");
 
-			stored_in_ef = (file->type != SC_FILE_TYPE_DF);
-			sc_file_free(file);
-		}
+		stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+		sc_file_free(file);
+	}
 
 		/* If the object is stored in a normal EF, try to delete the EF. */
 		if (r == SC_SUCCESS && stored_in_ef) {
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &path);
 			LOG_TEST_RET(ctx, r, "Failed to delete object by path");
+		} 
 		}
-	}
-
+	
 	if (profile->ops->emu_update_any_df)   {
 		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_ERASE, obj);
 		LOG_TEST_RET(ctx, r, "'ERASE' update DF failed");
@@ -3011,8 +3012,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 			goto done;
 
-		r = sc_create_file(p15card->card, file);
-		if (r < 0)   {
+ 		r = sc_create_file(p15card->card, file);
+ 		if (r < 0)   {
 			sc_log(ctx, "Cannot create cert file");
 			goto done;
 		}
@@ -3022,8 +3023,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		struct sc_path tmp_path;
 
 		/* FCI of selected cert file do not contains ACLs.
-		 * For the 'UPDATE' authentication use instead sc_file
-		 *	instantiated from card profile with default ACLs. */
+		 * For the 'UPDATE' authentication use instead sc_file 
+		 * 	instantiated from card profile with default ACLs. */
 		sc_file_free(file);
 
 		r = select_object_path(p15card, profile, obj, &tmp_path);
@@ -3084,7 +3085,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 				r = SC_SUCCESS;
 		}
 		else {
-			r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+		r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
 		}
 
 		if (r < 0)
@@ -3147,11 +3148,11 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-
+	
 	data.method = type;
 	data.key_ref = reference;
 	data.len = sizeof(defbuf);
-	data.key_data = defbuf;
+	data.key_data = defbuf;	
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_DEFAULT_KEY, &data);
 	if (rv >= 0)
 		defsize = data.len;
@@ -3166,7 +3167,7 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 		memcpy(pinbuf, data.key_data, data.len);
 		*pinsize = data.len;
 	}
-
+	
 	memset(&auth_info, 0, sizeof(auth_info));
 	auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	auth_info.auth_method = type;
@@ -3245,8 +3246,8 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 			r = SC_ERROR_OBJECT_NOT_FOUND;
 			for (iter = tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2)
-				r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
-						tmp_path.len ? &tmp_path : NULL,
+				r = sc_pkcs15_find_pin_by_type_and_reference(p15card, 
+						tmp_path.len ? &tmp_path : NULL, 
 						type, reference, &pin_obj);
 		}
 		else   {
@@ -3265,7 +3266,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			if (pin_obj->content.len > pinsize)
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
 			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
-			pinsize = pin_obj->content.len;
+	        	pinsize = pin_obj->content.len;
 			sc_log(ctx, "'ve got '%s' value from cache", ident);
 			goto found;
 		}
@@ -3291,9 +3292,9 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		break;
 	}
 
-	if (r == SC_ERROR_OBJECT_NOT_FOUND)   {
+	if (r == SC_ERROR_OBJECT_NOT_FOUND)   { 
 		if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
-			r = 0, use_pinpad = 1;
+			r = 0, 	use_pinpad = 1;
 		else
 			r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
@@ -3304,7 +3305,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		LOG_FUNC_RETURN(ctx, r);
 	}
 
-found:
+found: 	
 	if (pin_obj)   {
 		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinsize ? pinbuf : NULL, pinsize);
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
@@ -3324,7 +3325,7 @@ found:
 		pin_cmd.pin_reference = reference;
 		pin_cmd.pin1.data = use_pinpad ? NULL : pinbuf;
 		pin_cmd.pin1.len = use_pinpad ? 0: pinsize;
-
+	
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
 		LOG_TEST_RET(ctx, r, "'VERIFY' pin cmd failed");
 	}
@@ -3341,7 +3342,7 @@ found:
  * info for that file in the profile file.
  *
  * In the latter case, there's a problem here if e.g. the SO PIN
- * defined by the profile is optional, and hasn't been set.
+ * defined by the profile is optional, and hasn't been set. 
  * On the orther hands, some cards do not return access conditions
  * in their response to SELECT FILE), so the latter case has been
  * used in most cards while the first case was added much later.
@@ -3392,7 +3393,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 }
 
 
-static int
+static int 
 do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_file *file, struct sc_file **parent)
 {
@@ -3425,7 +3426,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		r = sc_select_file(p15card->card, &path, NULL);
 		LOG_TEST_RET(ctx, r, "Cannot select parent DF");
-	}
+	} 
 	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS SPK 2.3")) {
 		/* in case of starcos spk 2.3 SELECT FILE does not
 		 * give us the ACLs => ask the profile */
@@ -3477,8 +3478,8 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 
 int
-sc_pkcs15init_update_file(struct sc_profile *profile,
-		struct sc_pkcs15_card *p15card, struct sc_file *file,
+sc_pkcs15init_update_file(struct sc_profile *profile, 
+		struct sc_pkcs15_card *p15card, struct sc_file *file, 
 		void *data, unsigned int datalen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -3503,20 +3504,20 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 
 		r = sc_pkcs15init_create_file(profile, p15card, file);
 		LOG_TEST_RET(ctx, r, "Failed to create file");
-
+		
 		r = sc_select_file(p15card->card, &file->path, &selected_file);
 		LOG_TEST_RET(ctx, r, "Failed to select newly created file");
 	}
 	else   {
 		LOG_TEST_RET(ctx, r, "Failed to select file");
-	}
+	}	
 
 	if (selected_file->size < datalen) {
-		sc_log(ctx, "File %s too small (require %u, have %u)",
+		sc_log(ctx, "File %s too small (require %u, have %u)", 
 				sc_print_path(&file->path), datalen, selected_file->size);
 		sc_file_free(selected_file);
 		LOG_TEST_RET(ctx, SC_ERROR_FILE_TOO_SMALL, "Update file failed");
-	}
+	} 
 	else if (selected_file->size > datalen && need_to_zap) {
 		/* zero out the rest of the file - we may have shrunk
 		 * the file contents */
@@ -3574,11 +3575,11 @@ sc_pkcs15init_fixup_acls(struct sc_pkcs15_card *p15card, struct sc_file *file,
 			if (acl->key_ref == SC_PKCS15INIT_SO_PIN) {
 				acl = so_acl;
 				what = "SO PIN";
-			}
+			} 
 			else if (acl->key_ref == SC_PKCS15INIT_USER_PIN) {
 				acl = user_acl;
 				what = "user PIN";
-			}
+			} 
 			else {
 				sc_log(ctx, "ACL references unknown symbolic PIN %d", acl->key_ref);
 				return SC_ERROR_INVALID_ARGUMENTS;
@@ -3593,7 +3594,7 @@ sc_pkcs15init_fixup_acls(struct sc_pkcs15_card *p15card, struct sc_file *file,
 
 			if (acl->method == SC_AC_NONE)
 				continue;
-		next:
+		next:	
 			sc_file_add_acl_entry(file, op, acl->method, acl->key_ref);
 			added++;
 		}
@@ -3609,7 +3610,7 @@ sc_pkcs15init_fixup_acls(struct sc_pkcs15_card *p15card, struct sc_file *file,
  * Fix up all file ACLs
  */
 int
-sc_pkcs15init_fixup_file(struct sc_profile *profile,
+sc_pkcs15init_fixup_file(struct sc_profile *profile, 
 		struct sc_pkcs15_card *p15card, struct sc_file *file)
 {
 	struct sc_context	*ctx = profile->card->ctx;
@@ -3637,7 +3638,7 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile,
 	if (pin_ref < 0) {
 		so_acl.method = SC_AC_NONE;
 		so_acl.key_ref = 0;
-	}
+	} 
 	else {
 		so_acl.method = SC_AC_CHV;
 		so_acl.key_ref = pin_ref;
@@ -3647,12 +3648,12 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile,
 	if (pin_ref < 0) {
 		user_acl.method = SC_AC_NONE;
 		user_acl.key_ref = 0;
-	}
+	} 
 	else {
 		user_acl.method = SC_AC_CHV;
 		user_acl.key_ref = pin_ref;
 	}
-	sc_log(ctx, "so_acl(method:%X,ref:%X), user_acl(method:%X,ref:%X)",
+	sc_log(ctx, "so_acl(method:%X,ref:%X), user_acl(method:%X,ref:%X)", 
 			so_acl.method, so_acl.key_ref, user_acl.method, user_acl.key_ref);
 
 	rv = sc_pkcs15init_fixup_acls(p15card, file, &so_acl, &user_acl);
@@ -3711,7 +3712,7 @@ sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 
 
 /*
- * Card specific sanity check procedure.
+ * Card specific sanity check procedure. 
  */
 int
 sc_pkcs15init_sanity_check(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
@@ -3729,7 +3730,7 @@ sc_pkcs15init_sanity_check(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 static int
 sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
-		unsigned int pin_len, struct sc_pkcs15_auth_info *auth_info)
+	       	unsigned int pin_len, struct sc_pkcs15_auth_info *auth_info)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_pin_attributes *pin_attrs;
@@ -3775,7 +3776,7 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 			r = sc_read_binary(card, 0, mem, len, 0);
 		else
 			r = SC_ERROR_OUT_OF_MEMORY;
-	}
+		}
 	else   {
 		r = 0;
 	}
@@ -3825,7 +3826,7 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 	if ((p == NULL) || (len == 0))
 		return 0;
 
-	end = p + (len - 1);
+	end = p + (len - 1); 
 	while (p < end) {	/* more bytes to look at */
 		int	r = 0;
 
@@ -3869,7 +3870,7 @@ error:
 
 
 static int
-do_encode_string(unsigned char **memp, unsigned char *end,
+do_encode_string(unsigned char **memp, unsigned char *end, 
 		unsigned char tag, const char *s)
 {
 	unsigned char	*p = *memp;
@@ -3889,7 +3890,7 @@ do_encode_string(unsigned char **memp, unsigned char *end,
 
 
 static int
-sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
+sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card, 
 		struct sc_profile *profile,
 		struct sc_pkcs15_object *pin_obj)
 {
