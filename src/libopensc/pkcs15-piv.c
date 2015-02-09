@@ -738,7 +738,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
                	if (cert_der.value) {
                	 	cert_info.value.value = cert_der.value;
                        	cert_info.value.len = cert_der.len;
-                       	cert_info.path.len = 0; /* use in mem cert from now on */
+			if (!p15card->opts.use_file_cache)
+							cert_info.path.len = 0; /* use in mem cert from now on */
                	}
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
